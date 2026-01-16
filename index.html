@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .left-panel {
+            background: white;
+        }
+        
+        .right-panel {
+            background: white;
+        }
+        
+        canvas {
+            display: block;
+            background: #f8f9fa;
+        }
+        
+        .button-container {
+            text-align: center;
+        }
+        
+        .sim-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .sim-button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.3);
+        }
+        
+        .sim-button:active {
+            transform: translateY(0);
+        }
+        
+        .sim-button.running {
+            background: #f44336;
+        }
+        
+        .sim-button.running:hover {
+            background: #da190b;
+        }
+        
+        .sim-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group {
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .control-group h3 {
+            margin-top: 0;
+            font-size: 16px;
+        }
+        
+        .slider-container {
+            margin: 0px 0;
+        }
+        
+        label {
+            display: block;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        input[type="range"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .value-display {
+            float: right;
+            font-weight: bold;
+        }
+        
+        .math-display {
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .math-display h3 {
+            margin-top: 0;
+            color: #1976D2;
+            font-size: 18px;
+        }
+        
+        .equation {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .balanced {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .unbalanced {
+            color: #f44336;
+            font-weight: bold;
+        }
+        
+        .running-indicator {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        
+        .time-display {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #666;
+            margin: 15px 0;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .lever-type {
+            text-align: center;
+            background: #2196F3;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="left-panel">
+            <canvas id="leverCanvas" width="750" height="375"></canvas>
+            
+            <div class="button-container">
+                <button id="simButton" class="sim-button">▶ Start</button>
+                <button id="resetButton" class="sim-button" style="margin-left: 5px;">↻ Reset</button>
+                Time: <span id="timeDisplay">0.00</span> s
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <h5>Load (Resistance)</h5>
+                    <div class="slider-container">
+                        <label>Weight (kg): <span class="value-display" id="loadWeightValue">20</span></label>
+                        <input type="range" id="loadWeight" min="1" max="50" value="20" step="1">
+                    </div>
+                    <div class="slider-container">
+                        <label>Distance from Fulcrum (m): <span class="value-display" id="loadDistanceValue">2.0</span></label>
+                        <input type="range" id="loadDistance" min="0.5" max="4" value="2" step="0.1">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h5>Effort (Applied Force)</h5>
+                    <div class="slider-container">
+                        <label>Force (N): <span class="value-display" id="effortForceValue">150</span></label>
+                        <input type="range" id="effortForce" min="10" max="500" value="150" step="5">
+                    </div>
+                    <div class="slider-container">
+                        <label>Lever Length (m): <span class="value-display" id="leverLengthValue">5.0</span></label>
+                        <input type="range" id="leverLength" min="2" max="6" value="5" step="0.1">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="right-panel">
+            <div class="math-display">
+                <h5>Angular Motion</h5>
+                <div class="equation">
+                    Angle: <span id="angleDisplay">0.00</span>°
+                </div>
+                <div class="equation">
+                    Angular Velocity: <span id="angularVelocityDisplay">0.00</span> rad/s
+                </div>
+                <div class="equation">
+                    Angular Acceleration: <span id="angularAcceleration">0.00</span> rad/s²
+                </div>
+            </div>
+            
+            <div class="math-display">
+                <h5>Torque Calculations</h5>
+                <div class="equation">
+                    Load Force: <span id="loadForce">0.0</span> N
+                </div>
+                <div class="equation">
+                    Load Distance: <span id="loadDist">0.0</span> m
+                </div>
+                <div class="equation">
+                    Load Torque (CCW): <span id="loadTorque">0.0</span> N⋅m
+                </div>
+                <div class="equation" style="border-top: 2px solid #ddd; margin-top: 10px; padding-top: 10px;">
+                    Effort Force: <span id="effortForceDisp">0.0</span> N
+                </div>
+                <div class="equation">
+                    Effort Distance: <span id="effortDist">0.0</span> m
+                </div>
+                <div class="equation">
+                    Effort Torque (CW): <span id="effortTorque">0.0</span> N⋅m
+                </div>
+                <div class="equation" style="border-top: 2px solid #ddd; margin-top: 10px; padding-top: 10px;">
+                    Net Torque: <span id="netTorque">0.0</span> N⋅m
+                </div>
+            </div>
+            
+            <div class="math-display">
+                <h5>System Status</h5>
+                <div class="equation">
+                    <span id="balanceStatus">Ready to simulate</span>
+                </div>
+                <div class="equation">
+                    Mechanical Advantage: <span id="mechanicalAdvantage">0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('leverCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRAVITY = 9.8;
+        const FULCRUM_X = 100; // Fulcrum at left edge for class 2 lever
+        const LEVER_Y = 175;
+        const SCALE = 80; // Increased scale for better visibility
+        const DAMPING = 0.98;
+        const MAX_ANGLE = Math.PI / 6; // 30 degrees
+        let isRunning = false;
+        let angle = 0;
+        let angularVelocity = 0;
+        let simulationTime = 0;
+        let lastTime = 0;
+        let animationFrameId = null;
+        
+        const loadWeightSlider = document.getElementById('loadWeight');
+        const loadDistanceSlider = document.getElementById('loadDistance');
+        const effortForceSlider = document.getElementById('effortForce');
+        const leverLengthSlider = document.getElementById('leverLength');
+        const simButton = document.getElementById('simButton');
+        const resetButton = document.getElementById('resetButton');
+        
+        const sliders = [loadWeightSlider, loadDistanceSlider, effortForceSlider, leverLengthSlider];
+        sliders.forEach(slider => {
+            slider.addEventListener('input', updateDisplay);
+        });
+        
+        simButton.addEventListener('click', toggleSimulation);
+        resetButton.addEventListener('click', resetSimulation);
+        
+        function toggleSimulation() {
+            if (isRunning) {
+                stopSimulation();
+            } else {
+                startSimulation();
+            }
+        }
+        
+        function startSimulation() {
+            isRunning = true;
+            simButton.textContent = '⏸ Stop';
+            simButton.classList.add('running');
+            sliders.forEach(slider => slider.disabled = true);
+            
+            lastTime = performance.now();
+            animate();
+        }
+        
+        function stopSimulation() {
+            isRunning = false;
+            simButton.textContent = '▶ Start';
+            simButton.classList.remove('running');
+            sliders.forEach(slider => slider.disabled = false);
+            
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }
+        
+        function resetSimulation() {
+            stopSimulation();
+            angle = 0;
+            angularVelocity = 0;
+            simulationTime = 0;
+            updateDisplay();
+            draw();
+        }
+        
+        function animate() {
+            if (!isRunning) return;
+            
+            const currentTime = performance.now();
+            const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1);
+            lastTime = currentTime;
+            
+            updatePhysics(deltaTime);
+            simulationTime += deltaTime;
+            
+            updateDisplay();
+            draw();
+            
+            animationFrameId = requestAnimationFrame(animate);
+        }
+        
+        function updatePhysics(dt) {
+            const loadWeight = parseFloat(loadWeightSlider.value);
+            const loadDistance = parseFloat(loadDistanceSlider.value);
+            const effortForce = parseFloat(effortForceSlider.value);
+            const leverLength = parseFloat(leverLengthSlider.value);
+            
+            const loadForce = loadWeight * GRAVITY;
+            
+            // Torques: load pulls down (CCW), effort pushes up (CW)
+            const loadTorque = loadForce * loadDistance * Math.cos(angle);
+            const effortTorque = effortForce * leverLength * Math.cos(angle);
+            
+            // Net torque: effort (CW, positive) - load (CCW, negative)
+            const netTorque = effortTorque - loadTorque;
+            
+            // Moment of inertia calculation
+            const momentOfInertia = loadWeight * (loadDistance * loadDistance) + 
+                                   (effortForce / GRAVITY) * (leverLength * leverLength);
+            
+            const angularAcceleration = netTorque / momentOfInertia;
+            angularVelocity += angularAcceleration * dt;
+            angularVelocity *= DAMPING;
+            
+            angle += angularVelocity * dt;
+            
+            // Limit rotation
+            if (angle > MAX_ANGLE) {
+                angle = MAX_ANGLE;
+                angularVelocity = 0;
+            } else if (angle < -MAX_ANGLE) {
+                angle = -MAX_ANGLE;
+                angularVelocity = 0;
+            }
+            
+            // Stop if near equilibrium
+            if (Math.abs(angularVelocity) < 0.001 && Math.abs(angle) < 0.01) {
+                angularVelocity = 0;
+                angle = 0;
+            }
+        }
+        
+        function updateDisplay() {
+            document.getElementById('loadWeightValue').textContent = loadWeightSlider.value;
+            document.getElementById('loadDistanceValue').textContent = parseFloat(loadDistanceSlider.value).toFixed(1);
+            document.getElementById('effortForceValue').textContent = effortForceSlider.value;
+            document.getElementById('leverLengthValue').textContent = parseFloat(leverLengthSlider.value).toFixed(1);
+            
+            const loadWeight = parseFloat(loadWeightSlider.value);
+            const loadDistance = parseFloat(loadDistanceSlider.value);
+            const effortForce = parseFloat(effortForceSlider.value);
+            const leverLength = parseFloat(leverLengthSlider.value);
+            
+            const loadForce = loadWeight * GRAVITY;
+            const loadTorque = loadForce * loadDistance * Math.cos(angle);
+            const effortTorque = effortForce * leverLength * Math.cos(angle);
+            const netTorque = effortTorque - loadTorque;
+            
+            const momentOfInertia = loadWeight * (loadDistance * loadDistance) + 
+                                   (effortForce / GRAVITY) * (leverLength * leverLength);
+            const angularAcceleration = netTorque / momentOfInertia;
+            
+            document.getElementById('loadForce').textContent = loadForce.toFixed(1);
+            document.getElementById('loadDist').textContent = loadDistance.toFixed(1);
+            document.getElementById('loadTorque').textContent = loadTorque.toFixed(1);
+            document.getElementById('effortForceDisp').textContent = effortForce.toFixed(1);
+            document.getElementById('effortDist').textContent = leverLength.toFixed(1);
+            document.getElementById('effortTorque').textContent = effortTorque.toFixed(1);
+            document.getElementById('netTorque').textContent = netTorque.toFixed(2);
+            document.getElementById('angularAcceleration').textContent = angularAcceleration.toFixed(2);
+            document.getElementById('angleDisplay').textContent = (angle * 180 / Math.PI).toFixed(2);
+            document.getElementById('angularVelocityDisplay').textContent = angularVelocity.toFixed(3);
+            document.getElementById('timeDisplay').textContent = simulationTime.toFixed(2);
+            
+            const balanceStatus = document.getElementById('balanceStatus');
+            
+            if (isRunning) {
+                if (Math.abs(netTorque) < 1 && Math.abs(angularVelocity) < 0.01) {
+                    balanceStatus.innerHTML = '<span class="balanced">⚖️ BALANCED! System at rest</span>';
+                } else if (netTorque > 0) {
+                    balanceStatus.innerHTML = '<span class="running-indicator">🔄 Rotating clockwise (effort > load)</span>';
+                } else {
+                    balanceStatus.innerHTML = '<span class="running-indicator">🔄 Rotating counter-clockwise (load > effort)</span>';
+                }
+            } else {
+                if (Math.abs(loadTorque - effortTorque) < 1) {
+                    balanceStatus.innerHTML = '<span class="balanced">⚖️ System is balanced</span>';
+                } else if (loadTorque > effortTorque) {
+                    balanceStatus.innerHTML = '<span class="unbalanced">⬇ Load heavier (will rotate CCW)</span>';
+                } else {
+                    balanceStatus.innerHTML = '<span class="unbalanced">⬆ Effort stronger (will rotate CW)</span>';
+                }
+            }
+            
+            // Mechanical advantage for class 2: MA = effort distance / load distance
+            const mechanicalAdvantage = (leverLength / loadDistance).toFixed(2);
+            document.getElementById('mechanicalAdvantage').textContent = mechanicalAdvantage;
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const loadWeight = parseFloat(loadWeightSlider.value);
+            const loadDistance = parseFloat(loadDistanceSlider.value);
+            const leverLength = parseFloat(leverLengthSlider.value);
+            
+            const loadX = FULCRUM_X + loadDistance * SCALE;
+            const effortX = FULCRUM_X + leverLength * SCALE;
+            
+            // Save context for rotation
+            ctx.save();
+            ctx.translate(FULCRUM_X, LEVER_Y);
+            ctx.rotate(angle);
+            ctx.translate(-FULCRUM_X, -LEVER_Y);
+            
+            // Draw lever bar
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(FULCRUM_X, LEVER_Y);
+            ctx.lineTo(effortX, LEVER_Y);
+            ctx.stroke();
+            
+            // Draw load weight
+            drawWeight(ctx, loadX, LEVER_Y, loadWeight);
+            
+            // Draw effort point (smaller indicator)
+            drawEffortPoint(ctx, effortX, LEVER_Y);
+            
+            // Draw force arrows
+            drawForceArrow(ctx, loadX, LEVER_Y + 30, loadWeight * GRAVITY, 'down');
+            drawForceArrow(ctx, effortX, LEVER_Y - 30, parseFloat(effortForceSlider.value), 'up');
+            
+            ctx.restore();
+            
+            // Draw fulcrum (not rotated)
+            drawFulcrum(ctx, FULCRUM_X, LEVER_Y);
+            
+            // Draw distance markers
+            drawDistanceMarker(ctx, FULCRUM_X, loadX, LEVER_Y - 80, loadDistance.toFixed(1) + 'm', 'Load');
+            drawDistanceMarker(ctx, FULCRUM_X, effortX, LEVER_Y - 100, leverLength.toFixed(1) + 'm', 'Effort');
+        }
+        
+        function drawWeight(ctx, x, y, mass) {
+            const size = Math.sqrt(mass) * 8;
+            
+            ctx.fillStyle = '#2196F3';
+            ctx.fillRect(x - size/2, y, size, size);
+            
+            ctx.strokeStyle = '#1565C0';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - size/2, y, size, size);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(mass + ' kg', x, y + size/2 + 5);
+        }
+        
+        function drawEffortPoint(ctx, x, y) {
+            // Draw a hand/grip indicator
+            ctx.fillStyle = '#FF9800';
+            ctx.beginPath();
+            ctx.arc(x, y - 10, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#F57C00';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('E', x, y - 6);
+        }
+        
+        function drawFulcrum(ctx, x, y) {
+            ctx.fillStyle = '#555';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - 25, y + 40);
+            ctx.lineTo(x + 25, y + 40);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(x - 40, y + 40, 80, 10);
+            
+            // Label
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('FULCRUM', x, y + 65);
+        }
+        
+        function drawDistanceMarker(ctx, x1, x2, y, label, type) {
+            ctx.strokeStyle = type === 'Load' ? '#2196F3' : '#FF9800';
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y);
+            ctx.lineTo(x2, y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y - 5);
+            ctx.lineTo(x1, y + 5);
+            ctx.moveTo(x2, y - 5);
+            ctx.lineTo(x2, y + 5);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, (x1 + x2) / 2, y - 10);
+        }
+        
+        function drawForceArrow(ctx, x, y, force, direction) {
+            const arrowLength = Math.min(force / 3, 60);
+            const color = direction === 'down' ? '#f44336' : '#4CAF50';
+            
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+            
+            if (direction === 'down') {
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x, y + arrowLength);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y + arrowLength);
+                ctx.lineTo(x - 6, y + arrowLength - 10);
+                ctx.lineTo(x + 6, y + arrowLength - 10);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.fillStyle = '#d32f2f';
+                ctx.font = '11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(force.toFixed(0) + ' N', x, y + arrowLength + 15);
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x, y - arrowLength);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y - arrowLength);
+                ctx.lineTo(x - 6, y - arrowLength + 10);
+                ctx.lineTo(x + 6, y - arrowLength + 10);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.fillStyle = '#2E7D32';
+                ctx.font = '11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(force.toFixed(0) + ' N', x, y - arrowLength - 5);
+            }
+        }
+        
+        updateDisplay();
+        draw();
+    </script>
+</body>
+</html>
