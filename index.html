@@ -269,11 +269,11 @@
         const canvas = document.getElementById('leverCanvas');
         const ctx = canvas.getContext('2d');
         const GRAVITY = 9.8;
-        const FULCRUM_X = 100; // Fulcrum at left edge for class 2 lever
+        const FULCRUM_X = 100;
         const LEVER_Y = 175;
-        const SCALE = 80; // Increased scale for better visibility
+        const SCALE = 80;
         const DAMPING = 0.98;
-        const MAX_ANGLE = Math.PI / 6; // 30 degrees
+        const MAX_ANGLE = Math.PI / 6;
         let isRunning = false;
         let angle = 0;
         let angularVelocity = 0;
@@ -358,15 +358,9 @@
             const leverLength = parseFloat(leverLengthSlider.value);
             
             const loadForce = loadWeight * GRAVITY;
-            
-            // Torques: load pulls down (CCW), effort pushes up (CW)
             const loadTorque = loadForce * loadDistance * Math.cos(angle);
             const effortTorque = effortForce * leverLength * Math.cos(angle);
-            
-            // Net torque: effort (CW, positive) - load (CCW, negative)
             const netTorque = effortTorque - loadTorque;
-            
-            // Moment of inertia calculation
             const momentOfInertia = loadWeight * (loadDistance * loadDistance) + 
                                    (effortForce / GRAVITY) * (leverLength * leverLength);
             
@@ -375,8 +369,6 @@
             angularVelocity *= DAMPING;
             
             angle += angularVelocity * dt;
-            
-            // Limit rotation
             if (angle > MAX_ANGLE) {
                 angle = MAX_ANGLE;
                 angularVelocity = 0;
@@ -385,7 +377,6 @@
                 angularVelocity = 0;
             }
             
-            // Stop if near equilibrium
             if (Math.abs(angularVelocity) < 0.001 && Math.abs(angle) < 0.01) {
                 angularVelocity = 0;
                 angle = 0;
@@ -459,13 +450,11 @@
             const loadX = FULCRUM_X + loadDistance * SCALE;
             const effortX = FULCRUM_X + leverLength * SCALE;
             
-            // Save context for rotation
             ctx.save();
             ctx.translate(FULCRUM_X, LEVER_Y);
             ctx.rotate(angle);
             ctx.translate(-FULCRUM_X, -LEVER_Y);
             
-            // Draw lever bar
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
@@ -474,22 +463,17 @@
             ctx.lineTo(effortX, LEVER_Y);
             ctx.stroke();
             
-            // Draw load weight
             drawWeight(ctx, loadX, LEVER_Y, loadWeight);
             
-            // Draw effort point (smaller indicator)
             drawEffortPoint(ctx, effortX, LEVER_Y);
             
-            // Draw force arrows
             drawForceArrow(ctx, loadX, LEVER_Y + 30, loadWeight * GRAVITY, 'down');
             drawForceArrow(ctx, effortX, LEVER_Y - 30, parseFloat(effortForceSlider.value), 'up');
             
             ctx.restore();
             
-            // Draw fulcrum (not rotated)
             drawFulcrum(ctx, FULCRUM_X, LEVER_Y);
             
-            // Draw distance markers
             drawDistanceMarker(ctx, FULCRUM_X, loadX, LEVER_Y - 80, loadDistance.toFixed(1) + 'm', 'Load');
             drawDistanceMarker(ctx, FULCRUM_X, effortX, LEVER_Y - 100, leverLength.toFixed(1) + 'm', 'Effort');
         }
@@ -511,7 +495,6 @@
         }
         
         function drawEffortPoint(ctx, x, y) {
-            // Draw a hand/grip indicator
             ctx.fillStyle = '#FF9800';
             ctx.beginPath();
             ctx.arc(x, y - 10, 15, 0, Math.PI * 2);
@@ -539,7 +522,6 @@
             ctx.fillStyle = '#333';
             ctx.fillRect(x - 40, y + 40, 80, 10);
             
-            // Label
             ctx.fillStyle = '#333';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
